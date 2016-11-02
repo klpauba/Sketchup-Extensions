@@ -1,6 +1,6 @@
 # Choose Reference Face Extension
 This extension allows you to identify the selected edge and
-faces as the arris and reference face of a timber.  This
+face as the arris and reference face of a timber.  This
 extension is useful in Timber Framing.
 
 ## Use
