@@ -8,13 +8,19 @@ While in a component, double click on any edge to select the edge and
 the two connected faces.  The selected edge becomes the arris.  Use
 the context menu and select the "Choose Reference Face" item (if it is
 greyed out, you haven't selected exactly one edge with two connected
-faces).  Now, move the cursor over one of the two faces and it will be
+faces).
+
+![Selecting the arris along with context menu](images/screenshot-1.png)
+
+Now, move the cursor over one of the two faces and it will be
 outlined in red.  You identify the reference face by clicking the left
 mouse button while your choice of the two faces is outlined.  A
 reference mark (a closed triangle) will be drawn on the reference face
 pointing to the arris at a location determined by the cursor position.
 Another mark (an open triangle) will be drawn on the adjacent face
 pointing to the same location on the arris.
+
+![Selecting the reference face](images/screenshot-2.png)
 
 You can click the left mouse button repeatedly to move the
 reference marks or change the reference face.  The tool
