@@ -27,5 +27,5 @@ reference marks or change the reference face.  The tool
 remains active until another tool is chosen.  If necessary,
 you can Undo any and each mark.
 
-Each reference mark is drawn as a separate group and are
-placed on their own layer named "Reference Marks".
+Each reference mark is drawn as a separate group and all marks are
+placed on a layer named "Reference Marks".
