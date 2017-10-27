@@ -186,6 +186,68 @@ module KLP_CRF
         mark_layer = @model.layers.add REFERENCE_MARK_LAYER_NAME
         refgrp.layer = adjgrp.layer = mark_layer
 
+	#
+	# Now calculate the section modulus (assume the timber is
+	# rectangular in cross-section and homogeneous so that the
+	# neutral axis passes through the center of the timber).
+        #
+        # NOTE: What about braces, rafters, struts, etc.?
+        #
+	# 1) Choose one of the two marked faces whose normal is
+	#    perpendicular to the ground plane (in world coordinates).
+	#    This tells us which dimension will be the height and
+	#    which is the depth.  2) Find one edge that is not the
+	#    same length of the arris.  This must be one edge of the
+	#    end of the timber and the length of the chosen edge
+	#    represents 'b' (the breadth of the beam).
+        #
+        # --- OR ---
+        #
+        # 2) Choose either vertex of the arris and then find the lines
+        #    that share this common vertex (there will be 3).  The two
+        #    edges that are not the arris represent the 'h' (the
+        #    height) and 'b' (the breadth) of the beam.  if one of the
+        #    edges defines the perpendicular face that is common with
+        #    the arris, that edge is 'b'.
+        #
+	# 3) Find all edges that bound the face.  
+	# 4) Find and edge that is not the same length as 'b'.  If one is found,
+	#    it represents 'h' (the height of the beam).  Otherwise, the beam
+	#    must be square and 'h' is the same as 'b'.
+	# 4) Calculate the geometric properties of the rectangle:
+
+        #      a) Elastic Section Modulus: S = b*h^2/6
+        #      d) Moment of inertia about the center axis:    I(xc)=b*h^3/12=S*h/2, I(yc)=b^3*h/12=S*b/2, I(zc)=b*h*(b^2+h^2)/12
+        #      e) Radius of gyration about the center axis:   k(xc)=h/(2*sqrt(3)),k(yc)=b/(2*sqrt(3)), k(zc)=sqrt(b^2+h^2)/(2*sqrt(3))
+        #      b) Moment of inertia about x-,y- and z-axis:   I(x)=4*I(xc), I(y) = 4*I(yc), I(z) = 4*I(zc)
+        #      c) Radius of gyration abount x-,y- and z-axis: k(x)=2*k(xc), k(y)=2*k(yc), k(z)=2*k(zc)
+        #
+	# 5) Save the calculated Section Modulus as an attribute of the timber.
+	#
+        v = @arris.start
+        e = v.edges
+        e.delete(@arris)
+        print "Arris: ", @arris, "\n"
+        print "Edges: ", e, "\n"
+        sm = [0.0, 0.0]
+        l = [0.0, 0.0]
+        if e[0].common_face(@arris) == @face
+          l[0] = e[0].length
+          l[1] = e[1].length
+        else
+          l[0] = e[1].length
+          l[1] = e[0].length
+        end
+        sm[0] = l[0] * l[1] ** 2 / 6
+        sm[1] = l[1] * l[0] ** 2 / 6
+        print "Geometric Properties (S, I & k about center axes)\n"
+        print "================================================================\n"
+        print "Arris Length (A): ", @arris.length, "\n"
+        print "End Dimenstions (L): ", l, " inches\n"
+        print "Section Modulus (S): ", sm, " inches^3\n"
+        print "Moment of Inertia (I): [", sm[0]*l[1]/2, ", ", sm[1]*l[0]/2, "] inches^4\n"
+        print "Radius of Gyration (k): [", l[1]/(2*Math.sqrt(3)), ", ", l[0]/(2*Math.sqrt(3)), ", ", Math.sqrt(l[0]**2+l[1]**2)/(2*Math.sqrt(3)), "] inches\n"
+
         @model.commit_operation
       end
     end
