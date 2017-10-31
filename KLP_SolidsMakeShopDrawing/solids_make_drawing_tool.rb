@@ -25,6 +25,11 @@ module KLP::Plugins::SolidsMakeShopDrawing
       
     # Called when class is loaded
     def initialize
+      unless Sketchup.is_pro?
+        UI.messagebox("This plugin requires support for solids that is only available in the Pro Version.")
+        return
+      end
+      
       model = Sketchup.active_model
       ss = model.selection
       if ss.size != 1
@@ -102,12 +107,91 @@ module KLP::Plugins::SolidsMakeShopDrawing
                 if mortise_name.start_with?('Peg', 'peg')
                   print("Primary Vs:", verticies_in_bbox(@primary, bbox), "\n")
                   print("Peg Vs:", verticies_in_bbox(timber, bbox), "\n")
+
+                  # TODO: Add a circle to the face of the primary
+                  #       group that is coincident with the peg (both
+                  #       sides). This will then allow the peg hole to
+                  #       exist as a circle instead of individual (but
+                  #       connected) lines.  We can then easily add a
+                  #       construction point at the center to simplify
+                  #       dimensioning.
+                  #
+                  #       Maybe find each circular face at the end of
+                  #       the peg, find its center along with a vector
+                  #       pointing toward the primary instance.  Then
+                  #       use model.raytest() to determine the point
+                  #       on primary where that marks the center of
+                  #       the peg.  Record this location and use it to
+                  #       create crosshairs on the drawing.
+                  #
+
+                  #
+                  # Trim the peg to the size of the original timber
+                  #
+                  # Find the two faces of the pegs with the smallest
+                  # area.
+                  faces = timber.definition.entities.grep(Sketchup::Face)
+                  areas = faces.map { |f| f.area }
+                  min, max = areas.minmax
+                  peg_faces = faces.select { |f| (f.area - min).abs < 0.001 }
+                  if peg_faces.size != 2
+                    print("Odd, ", peg_faces.size, " peg faces!\n")
+                  end
+
+                  # Now, use the center of the face bounding box and
+                  # the reversed normal vector to find the
+                  # intersecting point on the face of the original
+                  # timber
+                  mod = Sketchup.active_model
+                  cpoints = Array.new
+                  peg_faces.each { |f|
+                    pc = Geom::Point3d.new(f.bounds.center)
+                    pv = Geom::Vector3d.new(f.normal.reverse)
+                    pc.transform!(timber.transformation)
+                    pv.transform!(timber.transformation)
+                    
+                    print("Found Peg face: ", f.to_s, ", area: ", f.area, ", center: ", pc.to_s, "\n")
+
+                    item = mod.raytest([pc, pv], true)
+                    if item
+                      pc = item[0]
+                      c = item[1][0]
+                      print("Peg face ", f, " intersected component ", c.to_s, " at ", pc, " (@primary=", @primary.to_s, ", original=", original.to_s, ", timber=", timber.to_s, ")\n")
+                      next unless c == original || c == @primary
+                      
+                      # tr = c.transformation.inverse * timber.transformation
+                      tr = c.transformation.inverse
+                      # pv.transform!(tr)
+                      pc.transform!(tr)
+                      # pc.transform!(Geom::Transformation.translation(pv.length=d))
+                      print("pc2:" + pc.to_s + "\n")
+                      # cpoints.push(pc)
+
+                      if @primary.is_a?(Sketchup::ComponentInstance)
+                        ents = @primary.definition.entities
+                      elsif @primary.is_a?(Sketchup::Group)
+                        ents = @primary.entities
+                      end
+                      ents.add_cpoint(pc)
+                    else
+                      print("raytest failed!\n")
+                    end
+                  }
+                  
+                  # if @primary.is_a?(Sketchup::ComponentInstance)
+                  #   ents = @primary.definition.entities
+                  # else
+                  #   ents = @primary.entities
+                  # end
+                  # cpoints.each { |pc| ents.add_cpoint(pc) }
+                  next
+                else
+                  # print("Now trim the primary timber with the target timber \"", mortise_name, "\"\n")
+                  grp = timber.trim(@primary)
                 end
-                # print("Now trim the primary timber with the target timber \"", mortise_name, "\"\n")
-                grp = timber.trim(@primary)
                 if mortise_name
                   mortise_volume[mortise_name] = volume - grp.volume
-                  if mortise_name == 'Peg'
+                  if mortise_name.start_with?('Peg', 'peg')
                     print("\tPeg hole volume:", mortise_volume[mortise_name], "\n")
                   else
                     print("\t", mortise_name, " mortise volume:", mortise_volume[mortise_name], "\n")
@@ -191,7 +275,7 @@ module KLP::Plugins::SolidsMakeShopDrawing
           tsize = tdims[0].to_s + " x " + tdims[1].to_s + " x " + tdims[3].to_s  
 tm = Time.now  
           ts = tm.strftime("Created on: %m/%d/%Y")  
-          drawing_title = company_name + "\nProject: " + model.title + "\nTimber: " + timber_name + " - " + tsize + "\n" + ts + "\n"
+          # drawing_title = company_name + "\nProject: " + model.title + "\nTimber: " + timber_name + " - " + tsize + "\n" + ts + "\n"
 
           # Remove all entities that are not part of the drawings
           #
@@ -218,7 +302,7 @@ tm = Time.now
           view.zoom(ss)
           ss.clear
 
-          model.add_note(drawing_title, 0.01, 0.02)
+          # model.add_note(drawing_title, 0.01, 0.02)
           begin
             sd_file = UI.savepanel("Save Shop Drawings", "",drawing_name)
 
